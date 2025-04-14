@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 generate_genesis() {
     set +x
     export CHAIN_ID_HEX="0x$(printf "%x" $CHAIN_ID)"
@@ -26,55 +29,55 @@ generate_genesis() {
     if [ "$CHAIN_ID" == "1" ]; then
         # mainnet shadowfork
         has_fork="4" # deneb
-        cp /apps/el-gen/mainnet/genesis.json $tmp_dir/genesis.json
-        cp /apps/el-gen/mainnet/chainspec.json $tmp_dir/chainspec.json
-        cp /apps/el-gen/mainnet/besu_genesis.json $tmp_dir/besu.json
+        cp "$SCRIPT_DIR/mainnet/genesis.json" $tmp_dir/genesis.json
+        cp "$SCRIPT_DIR/mainnet/chainspec.json" $tmp_dir/chainspec.json
+        cp "$SCRIPT_DIR/mainnet/besu_genesis.json" $tmp_dir/besu.json
     elif [ "$CHAIN_ID" == "11155111" ]; then
         # sepolia shadowfork
         has_fork="4" # deneb
-        cp /apps/el-gen/sepolia/genesis.json $tmp_dir/genesis.json
-        cp /apps/el-gen/sepolia/chainspec.json $tmp_dir/chainspec.json
-        cp /apps/el-gen/sepolia/besu_genesis.json $tmp_dir/besu.json
+        cp "$SCRIPT_DIR/sepolia/genesis.json" $tmp_dir/genesis.json
+        cp "$SCRIPT_DIR/sepolia/chainspec.json" $tmp_dir/chainspec.json
+        cp "$SCRIPT_DIR/sepolia/besu_genesis.json" $tmp_dir/besu.json
     elif [ "$CHAIN_ID" == "17000" ]; then
         # holesky shadowfork
         has_fork="4" # deneb
-        cp /apps/el-gen/holesky/genesis.json $tmp_dir/genesis.json
-        cp /apps/el-gen/holesky/chainspec.json $tmp_dir/chainspec.json
-        cp /apps/el-gen/holesky/besu_genesis.json $tmp_dir/besu.json
+        cp "$SCRIPT_DIR/holesky/genesis.json" $tmp_dir/genesis.json
+        cp "$SCRIPT_DIR/holesky/chainspec.json" $tmp_dir/chainspec.json
+        cp "$SCRIPT_DIR/holesky/besu_genesis.json" $tmp_dir/besu.json
     elif [ "$CHAIN_ID" == "560048" ]; then
         # hoodi shadowfork
         has_fork="5" # electra
-        cp /apps/el-gen/hoodi/genesis.json $tmp_dir/genesis.json
-        cp /apps/el-gen/hoodi/chainspec.json $tmp_dir/chainspec.json
-        cp /apps/el-gen/hoodi/besu_genesis.json $tmp_dir/besu.json
+        cp "$SCRIPT_DIR/hoodi/genesis.json" $tmp_dir/genesis.json
+        cp "$SCRIPT_DIR/hoodi/chainspec.json" $tmp_dir/chainspec.json
+        cp "$SCRIPT_DIR/hoodi/besu_genesis.json" $tmp_dir/besu.json
     else
         # Generate base genesis.json, chainspec.json and besu.json
-        envsubst < /apps/el-gen/tpl-genesis.json   > $tmp_dir/genesis.json
-        envsubst < /apps/el-gen/tpl-chainspec.json > $tmp_dir/chainspec.json
-        envsubst < /apps/el-gen/tpl-besu.json      > $tmp_dir/besu.json
+        envsubst <"$SCRIPT_DIR/tpl-genesis.json" >$tmp_dir/genesis.json
+        envsubst <"$SCRIPT_DIR/tpl-chainspec.json" >$tmp_dir/chainspec.json
+        envsubst <"$SCRIPT_DIR/tpl-besu.json" >$tmp_dir/besu.json
         is_shadowfork="0"
         has_fork="0"
     fi
 
     # Add additional fork properties
     [ $has_fork -lt 2 ] && genesis_add_bellatrix $tmp_dir
-    [ $has_fork -lt 3 ] && [ ! "$CAPELLA_FORK_EPOCH"   == "18446744073709551615" ] && genesis_add_capella $tmp_dir
-    [ $has_fork -lt 4 ] && [ ! "$DENEB_FORK_EPOCH"     == "18446744073709551615" ] && genesis_add_deneb $tmp_dir
-    [ $has_fork -lt 5 ] && [ ! "$ELECTRA_FORK_EPOCH"   == "18446744073709551615" ] && genesis_add_electra $tmp_dir
-    [ $has_fork -lt 6 ] && [ ! "$FULU_FORK_EPOCH"      == "18446744073709551615" ] && genesis_add_fulu $tmp_dir
-    [ $has_fork -lt 7 ] && [ ! "$EIP7805_FORK_EPOCH"   == "18446744073709551615" ] && genesis_add_eip7805 $tmp_dir
+    [ $has_fork -lt 3 ] && [ ! "$CAPELLA_FORK_EPOCH" == "18446744073709551615" ] && genesis_add_capella $tmp_dir
+    [ $has_fork -lt 4 ] && [ ! "$DENEB_FORK_EPOCH" == "18446744073709551615" ] && genesis_add_deneb $tmp_dir
+    [ $has_fork -lt 5 ] && [ ! "$ELECTRA_FORK_EPOCH" == "18446744073709551615" ] && genesis_add_electra $tmp_dir
+    [ $has_fork -lt 6 ] && [ ! "$FULU_FORK_EPOCH" == "18446744073709551615" ] && genesis_add_fulu $tmp_dir
+    [ $has_fork -lt 7 ] && [ ! "$EIP7805_FORK_EPOCH" == "18446744073709551615" ] && genesis_add_eip7805 $tmp_dir
 
     if [ "$is_shadowfork" == "0" ]; then
         # Initialize allocations with precompiles
         echo "Adding precompile allocations..."
-        cat /apps/el-gen/precompile-allocs.yaml | yq -c > $tmp_dir/allocations.json
+        cat "$SCRIPT_DIR/precompile-allocs.yaml" | yq -c >$tmp_dir/allocations.json
 
         # Add system contracts
         genesis_add_system_contracts $tmp_dir
 
         # Build complete allocations object before applying
-        if [ -f /config/el/genesis-config.yaml ]; then
-            envsubst < /config/el/genesis-config.yaml | yq -c > $tmp_dir/el-genesis-config.json
+        if [ -f "$CONFIG_DIR/el/genesis-config.yaml" ]; then
+            envsubst <"$CONFI_DIR/el/genesis-config.yaml" | yq -c >$tmp_dir/el-genesis-config.json
 
             el_mnemonic=$(jq -r '.mnemonic // env.EL_AND_CL_MNEMONIC' $tmp_dir/el-genesis-config.json)
 
@@ -84,7 +87,7 @@ generate_genesis() {
                 path=$(echo $premine | jq -r '.key')
                 address=$(geth-hdwallet -mnemonic "$el_mnemonic" -path "$path" | grep "public address:" | awk '{print $3}')
                 echo "  adding allocation for $address"
-                echo "$premine" | jq -c '.value |= gsub(" *ETH"; "000000000000000000") | {"'"$address"'":{"balance":.value}}' >> $tmp_dir/allocations.json
+                echo "$premine" | jq -c '.value |= gsub(" *ETH"; "000000000000000000") | {"'"$address"'":{"balance":.value}}' >>$tmp_dir/allocations.json
             done
 
             # Process static premine addresses
@@ -92,7 +95,7 @@ generate_genesis() {
             cat $tmp_dir/el-genesis-config.json | jq -c '.el_premine_addrs
                 | with_entries(.value = (if (.value|type) == "string" then {"balance": .value} else .value end))
                 | with_entries(.value.balance |= gsub(" *ETH"; "000000000000000000"))
-            ' >> $tmp_dir/allocations.json
+            ' >>$tmp_dir/allocations.json
 
             # Process additional contracts
             additional_contracts=$(cat $tmp_dir/el-genesis-config.json | jq -cr '.additional_preloaded_contracts')
@@ -107,7 +110,7 @@ generate_genesis() {
 
             # Add additional contracts to allocations
             echo "Adding additional contracts..."
-            echo "$additional_contracts" | jq -c 'with_entries(.value.balance |= gsub(" *ETH"; "000000000000000000"))' >> $tmp_dir/allocations.json
+            echo "$additional_contracts" | jq -c 'with_entries(.value.balance |= gsub(" *ETH"; "000000000000000000"))' >>$tmp_dir/allocations.json
         fi
 
         # Apply combined allocations in one shot
@@ -118,9 +121,9 @@ generate_genesis() {
         genesis_add_json $tmp_dir/besu.json '.alloc += '"$allocations"
     fi
 
-    cat $tmp_dir/genesis.json | jq > $out_dir/genesis.json
-    cat $tmp_dir/chainspec.json | jq > $out_dir/chainspec.json
-    cat $tmp_dir/besu.json | jq > $out_dir/besu.json
+    cat $tmp_dir/genesis.json | jq >$out_dir/genesis.json
+    cat $tmp_dir/chainspec.json | jq >$out_dir/chainspec.json
+    cat $tmp_dir/besu.json | jq >$out_dir/besu.json
     rm -rf $tmp_dir
 }
 
@@ -133,8 +136,8 @@ genesis_get_activation_time() {
         else
             slots_per_epoch=32
         fi
-        epoch_delay=$(( $SLOT_DURATION_IN_SECONDS * $slots_per_epoch * $1 ))
-        echo $(( $GENESIS_TIMESTAMP + $GENESIS_DELAY + $epoch_delay ))
+        epoch_delay=$(($SLOT_DURATION_IN_SECONDS * $slots_per_epoch * $1))
+        echo $(($GENESIS_TIMESTAMP + $GENESIS_DELAY + $epoch_delay))
     fi
 }
 
@@ -142,7 +145,7 @@ genesis_add_json() {
     file=$1
     data=$2
 
-    jq -c "$data" "$file" > "$file.out"
+    jq -c "$data" "$file" >"$file.out"
     mv "$file.out" "$file"
 }
 
@@ -152,12 +155,12 @@ genesis_add_allocation() {
     allocation=$3
 
     echo "  adding allocation for $address"
-    echo "$allocation" | jq -c '.balance |= gsub(" *ETH"; "000000000000000000") | {("'"$address"'"): .}' >> $tmp_dir/allocations.json
+    echo "$allocation" | jq -c '.balance |= gsub(" *ETH"; "000000000000000000") | {("'"$address"'"): .}' >>$tmp_dir/allocations.json
 }
 
 genesis_add_system_contracts() {
     tmp_dir=$1
-    system_contracts=$(cat /apps/el-gen/system-contracts.yaml | yq -c)
+    system_contracts=$(cat "$SCRIPT_DIR/system-contracts.yaml" | yq -c)
 
     echo "Adding system contracts"
 
