@@ -77,7 +77,7 @@ generate_genesis() {
 
         # Build complete allocations object before applying
         if [ -f "$CONFIG_DIR/el/genesis-config.yaml" ]; then
-            envsubst <"$CONFI_DIR/el/genesis-config.yaml" | yq -c >$tmp_dir/el-genesis-config.json
+            envsubst <"$CONFIG_DIR/el/genesis-config.yaml" | yq -c >$tmp_dir/el-genesis-config.json
 
             el_mnemonic=$(jq -r '.mnemonic // env.EL_AND_CL_MNEMONIC' $tmp_dir/el-genesis-config.json)
 
