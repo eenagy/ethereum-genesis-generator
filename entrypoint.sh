@@ -155,7 +155,7 @@ gen_cl_config() {
       genesis_args+=(--additional-validators $validators_file)
     fi
 
-    /usr/local/bin/eth-beacon-genesis "${genesis_args[@]}"
+    eth-beacon-genesis "${genesis_args[@]}"
     echo "Genesis args: ${genesis_args[@]}"
     echo "Genesis block number: $(jq -r '.latest_execution_payload_header.block_number' "$DATA_DIR/parsed/parsedConsensusGenesis.json")"
     echo "Genesis block hash: $(jq -r '.latest_execution_payload_header.block_hash' "$DATA_DIR/parsed/parsedConsensusGenesis.json")"
