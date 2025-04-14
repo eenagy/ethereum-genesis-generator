@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
     shift 2
     ;;
   --values-env)
-    DEFAULTS_ENV="$2"
+    VALUES_ENV="$2"
     shift 2
     ;;
   --config-dir)
