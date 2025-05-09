@@ -29,25 +29,25 @@ generate_genesis() {
     if [ "$CHAIN_ID" == "1" ]; then
         # mainnet shadowfork
         has_fork="4" # deneb
-        cp "$SCRIPT_DIR/mainnet/genesis.json" $tmp_dir/genesis.json
+        cp "$SCRIPT_DIR/mainnet/genesis.json"   $tmp_dir/genesis.json
         cp "$SCRIPT_DIR/mainnet/chainspec.json" $tmp_dir/chainspec.json
         cp "$SCRIPT_DIR/mainnet/besu_genesis.json" $tmp_dir/besu.json
     elif [ "$CHAIN_ID" == "11155111" ]; then
         # sepolia shadowfork
-        has_fork="4" # deneb
-        cp "$SCRIPT_DIR/sepolia/genesis.json" $tmp_dir/genesis.json
+        has_fork="5" # electra
+        cp "$SCRIPT_DIR/sepolia/genesis.json"   $tmp_dir/genesis.json
         cp "$SCRIPT_DIR/sepolia/chainspec.json" $tmp_dir/chainspec.json
         cp "$SCRIPT_DIR/sepolia/besu_genesis.json" $tmp_dir/besu.json
     elif [ "$CHAIN_ID" == "17000" ]; then
         # holesky shadowfork
-        has_fork="4" # deneb
-        cp "$SCRIPT_DIR/holesky/genesis.json" $tmp_dir/genesis.json
+        has_fork="5" # electra
+        cp "$SCRIPT_DIR/holesky/genesis.json"   $tmp_dir/genesis.json
         cp "$SCRIPT_DIR/holesky/chainspec.json" $tmp_dir/chainspec.json
         cp "$SCRIPT_DIR/holesky/besu_genesis.json" $tmp_dir/besu.json
     elif [ "$CHAIN_ID" == "560048" ]; then
         # hoodi shadowfork
         has_fork="5" # electra
-        cp "$SCRIPT_DIR/hoodi/genesis.json" $tmp_dir/genesis.json
+        cp "$SCRIPT_DIR/hoodi/genesis.json"   $tmp_dir/genesis.json
         cp "$SCRIPT_DIR/hoodi/chainspec.json" $tmp_dir/chainspec.json
         cp "$SCRIPT_DIR/hoodi/besu_genesis.json" $tmp_dir/besu.json
     else
@@ -121,9 +121,10 @@ generate_genesis() {
         genesis_add_json $tmp_dir/besu.json '.alloc += '"$allocations"
     fi
 
-    cat $tmp_dir/genesis.json | jq >$out_dir/genesis.json
-    cat $tmp_dir/chainspec.json | jq >$out_dir/chainspec.json
-    cat $tmp_dir/besu.json | jq >$out_dir/besu.json
+    cat $tmp_dir/genesis.json   | jq > $out_dir/genesis.json
+    cat $tmp_dir/chainspec.json | jq > $out_dir/chainspec.json
+    cat $tmp_dir/besu.json      | jq > $out_dir/besu.json
+    
     rm -rf $tmp_dir
 }
 
@@ -302,6 +303,11 @@ genesis_add_electra() {
     prague_time=$(genesis_get_activation_time $ELECTRA_FORK_EPOCH)
     prague_time_hex="0x$(printf "%x" $prague_time)"
 
+    # load electra system contracts
+    system_contracts=$(cat "$SCRIPT_DIR/system-contracts.yaml" | yq -c)
+    EIP7002_CONTRACT_ADDRESS=$(echo "$system_contracts" | jq -r '.eip7002_address')
+    EIP7251_CONTRACT_ADDRESS=$(echo "$system_contracts" | jq -r '.eip7251_address')
+
     # genesis.json
     genesis_add_json $tmp_dir/genesis.json '.config += {
         "depositContractAddress": "'"$DEPOSIT_CONTRACT_ADDRESS"'",
@@ -323,8 +329,8 @@ genesis_add_electra() {
         "eip6110TransitionTimestamp": "'$prague_time_hex'",
         "eip7002TransitionTimestamp": "'$prague_time_hex'",
         "eip7251TransitionTimestamp": "'$prague_time_hex'",
-        "eip7702TransitionTimestamp": "'$prague_time_hex'",
-        "eip7623TransitionTimestamp": "'$prague_time_hex'"
+        "eip7623TransitionTimestamp": "'$prague_time_hex'",
+        "eip7702TransitionTimestamp": "'$prague_time_hex'"
     }'
     genesis_add_json $tmp_dir/chainspec.json '.params.blobSchedule += {
         "prague": {
@@ -337,6 +343,8 @@ genesis_add_electra() {
     # besu.json
     genesis_add_json $tmp_dir/besu.json '.config += {
         "depositContractAddress": "'"$DEPOSIT_CONTRACT_ADDRESS"'",
+        "withdrawalRequestContractAddress": "'"$EIP7002_CONTRACT_ADDRESS"'",
+        "consolidationRequestContractAddress": "'"$EIP7251_CONTRACT_ADDRESS"'",
         "pragueTime": '"$prague_time"'
     }'
     genesis_add_json $tmp_dir/besu.json '.config.blobSchedule += {
